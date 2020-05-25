@@ -1,0 +1,91 @@
+---
+title: "Naive bayes"
+author: "Jaymeen Gandhi"
+date: "4/24/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+require(tidyverse)
+```
+
+```{r}
+churn = read_csv("C:/Users/jayme/Downloads/WA_Fn-UseC_-Telco-Customer-Churn.csv")
+```
+
+##Preprocessing
+
+```{r}
+churn %>% head(10)
+```
+
+```{r}
+##Since the senior citizen column is in numerical form we need to convert it to categorical variable.
+
+churn = churn %>% mutate(SeniorCitizen=as.character(SeniorCitizen))
+
+churn = churn %>% select(-customerID)
+```
+
+```{r}
+
+
+## Now we have to check whether all the numeric variable are normally distributed or not.
+## Check it with the help of histograms.
+
+hist(churn$tenure) ##Not normally distribued requires binning
+hist(churn$MonthlyCharges) ##Not normally distribued requires binning
+hist(sqrt(churn$TotalCharges))  ## Taking the square root works over here so we do not need binning.
+```
+
+```{r}
+##Binning the numeric data
+##churn%>%mutate(tenure=cut(tenure,2,labels = c("low","high"))) # for knowledge
+churn2 = churn%>%mutate(tenure=cut(tenure,2),MonthlyCharges=cut(MonthlyCharges,4),TotalCharges=sqrt(TotalCharges))
+churn2 %>% head(10)
+```
+
+
+```{r}
+set.seed(1234)
+churn2 = churn2 %>% mutate(id = row_number())
+training_data = churn2 %>% sample_frac(0.7)
+testing_data = anti_join(churn2 , training_data , by ='id')
+```
+
+```{r}
+require(e1071)
+require(caret)
+```
+
+```{r}
+nb_model = naiveBayes(training_data[,-20],as.factor(training_data$Churn),laplace = 0.1)
+prediction = predict(nb_model,testing_data[,-20])
+
+confusionMatrix(as.factor(prediction),as.factor(testing_data$Churn))
+
+## Inorder to improve the model we can add laplace to the model(values between 0.1 to 1) or we can play with the cuts.
+```
+
+```{r}
+##Now our predictions are in the Yes or no form so we can make our predictions to our raw format.
+
+raw_predictions = predict(nb_model,testing_data[,-20], type = "raw")
+#raw_predictions
+```
+
+## We can improve the accuracy by using the probablities that is 0.3. 
+
+```{r}
+new_prediction= ifelse(raw_predictions[,2]>.3, 'Yes','No')
+confusionMatrix(as.factor(new_prediction), as.factor(testing_data$Churn))
+```
+
+
+
+
+
+
+
